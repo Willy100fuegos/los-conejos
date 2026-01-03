@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIXMEDIA Intelligence | Los Conejos</title>
+    
+    <!-- FUENTES -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- ICONOS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ESTILOS Y GRÁFICOS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- CONFIGURACIÓN TAILWIND -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 
+                            orange: '#F97316', 
+                            dark: '#1F2937',
+                            light: '#FFF7ED'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #F3F4F6; }
+        
+        /* Utilidades de Transición y UI */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .hidden-view { display: none !important; }
+        
+        /* Scrollbar estilizado */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* Efectos Hover */
+        .nav-item.active { background-color: #F97316; color: white; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3); }
+        .nav-item:not(.active):hover { background-color: #374151; color: white; }
+        
+        .table-row-hover:hover { background-color: #FFF7ED; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex overflow-hidden">
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="bg-gray-900 text-gray-400 w-64 flex-shrink-0 hidden md:flex flex-col transition-all duration-300 z-20 shadow-xl relative" id="sidebar">
+        <!-- Logo -->
+        <div class="h-20 flex items-center justify-center border-b border-gray-800 bg-gray-950">
+            <div class="bg-white p-1 rounded-lg">
+                <img id="app-logo" src="" alt="Logo Cliente" class="h-10 w-auto object-contain">
+            </div>
+        </div>
+
+        <!-- Navegación -->
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <p class="px-4 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Módulos</p>
+            
+            <a href="#" onclick="app.navigate('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200">
+                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Visión General
+            </a>
+            
+            <a href="#" onclick="app.navigate('auditorias')" id="nav-auditorias" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200">
+                <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Bitácora Visitas
+            </a>
+            
+            <a href="#" onclick="app.navigate('detalle')" id="nav-detalle" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200">
+                <i class="fa-solid fa-magnifying-glass-chart w-5 text-center"></i> Detalle Evaluación
+            </a>
+        </nav>
+
+        <!-- Footer User -->
+        <div class="p-4 border-t border-gray-800 bg-gray-950">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    PM
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-white">PIXMEDIA</p>
+                    <p class="text-xs text-gray-500">Admin. View</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <div class="flex-1 flex flex-col h-full relative overflow-hidden bg-gray-50">
+        
+        <!-- Header -->
+        <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-6 lg:px-8 z-10 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-4">
+                <button class="md:hidden text-gray-600 hover:text-brand-orange" onclick="app.toggleSidebar()">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800 leading-tight" id="header-title">Dashboard Operativo</h1>
+                    <p class="text-xs text-gray-500 flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span> 
+                        Datos actualizados: <span id="current-date"></span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="hidden sm:flex flex-col items-end mr-2">
+                    <span class="text-xs font-bold text-gray-400 uppercase">Sucursal Activa</span>
+                    <span class="text-sm font-bold text-gray-700" id="store-name">Cargando...</span>
+                </div>
+                <button class="bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition shadow-lg flex items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> <span class="hidden sm:inline">Reporte PDF</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content Views Container -->
+        <main class="flex-1 overflow-y-auto p-6 lg:p-8 scroll-smooth" id="main-container">
+            
+            <!-- ================= VIEW 1: DASHBOARD ================= -->
+            <div id="view-dashboard" class="fade-in">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- KPI 1 -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                            <i class="fa-solid fa-utensils text-6xl text-green-600"></i>
+                        </div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Calidad Comida</p>
+                        <h3 class="text-3xl font-black text-gray-800 mt-2">96<span class="text-lg text-gray-400">%</span></h3>
+                        <p class="text-xs font-medium text-green-600 mt-2 flex items-center bg-green-50 w-fit px-2 py-1 rounded">
+                            <i class="fa-solid fa-arrow-trend-up mr-1"></i> Fortaleza Clave
+                        </p>
+                    </div>
+
+                    <!-- KPI 2 (Critico) -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-red-500 relative overflow-hidden hover:shadow-md transition">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Venta Sugestiva</p>
+                        <h3 class="text-3xl font-black text-red-600 mt-2">25<span class="text-lg text-gray-400">%</span></h3>
+                        <p class="text-xs font-medium text-red-600 mt-2 flex items-center">
+                            <i class="fa-solid fa-circle-exclamation mr-1"></i> Pérdida de Ingreso
+                        </p>
+                        <p class="text-xs text-gray-400 mt-1">Solo 1 de 4 ofrece postre</p>
+                    </div>
+
+                    <!-- KPI 3 -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Ticket Promedio</p>
+                        <h3 class="text-3xl font-black text-gray-800 mt-2" id="kpi-ticket">$285</h3>
+                        <p class="text-xs font-medium text-yellow-600 mt-2 flex items-center bg-yellow-50 w-fit px-2 py-1 rounded">
+                            <i class="fa-solid fa-minus mr-1"></i> -15% vs Meta
+                        </p>
+                    </div>
+
+                    <!-- KPI 4 -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">NPS (Lealtad)</p>
+                        <h3 class="text-3xl font-black text-gray-800 mt-2">72</h3>
+                        <p class="text-xs font-medium text-gray-500 mt-2">
+                            Regresan por la comida, no por el servicio.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Trend Chart -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="font-bold text-gray-800 text-lg">La "Brecha de Servicio"</h3>
+                                <p class="text-sm text-gray-500">Comparativa: Calidad de Producto vs. Experiencia de Servicio</p>
+                            </div>
+                            <span class="bg-brand-light text-brand-orange text-xs font-bold px-3 py-1 rounded-full">Últimos 6 Meses</span>
+                        </div>
+                        <div class="h-64 w-full relative">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Radar Chart -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 class="font-bold text-gray-800 text-lg mb-2">Radiografía Operativa</h3>
+                        <p class="text-sm text-gray-500 mb-4">¿Dónde estamos fallando?</p>
+                        <div class="h-64 w-full relative flex justify-center">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-center">
+                            <p class="text-xs text-red-500 font-bold bg-red-50 p-2 rounded">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Alerta: Protocolo & Venta
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Call to Action / Summary -->
+                <div class="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div>
+                        <h3 class="text-xl font-bold mb-1"><i class="fa-solid fa-lightbulb text-yellow-400 mr-2"></i>Insight Principal</h3>
+                        <p class="text-gray-300 text-sm opacity-90">
+                            El cliente ama el sabor (Scores >95%), pero se está dejando dinero en la mesa. Implementar capacitación de "Upselling" aumentaría el ticket un 20% inmediato.
+                        </p>
+                    </div>
+                    <button onclick="app.navigate('detalle')" class="bg-brand-orange hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg whitespace-nowrap">
+                        Ver Evidencia Detallada <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 2: AUDITORÍAS (LISTADO) ================= -->
+            <div id="view-auditorias" class="hidden-view fade-in">
+                <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Bitácora de Visitas</h2>
+                        <p class="text-sm text-gray-500">Historial de evaluaciones Noviembre 2025</p>
+                    </div>
+                    
+                    <div class="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+                        <button onclick="app.filterAudits('all')" class="filter-btn active px-4 py-2 text-sm font-medium rounded-md transition-all text-white bg-gray-800" data-filter="all">Todas</button>
+                        <button onclick="app.filterAudits('high')" class="filter-btn px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-600 hover:bg-gray-100" data-filter="high">Aprobadas</button>
+                        <button onclick="app.filterAudits('low')" class="filter-btn px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-600 hover:bg-gray-100" data-filter="low">Críticas</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
+                            <tr>
+                                <th class="px-6 py-4">ID / Fecha</th>
+                                <th class="px-6 py-4">Shopper</th>
+                                <th class="px-6 py-4">Hallazgo Principal</th>
+                                <th class="px-6 py-4 text-center">Score</th>
+                                <th class="px-6 py-4 text-center">Estado</th>
+                                <th class="px-6 py-4 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-table-body" class="divide-y divide-gray-100 text-sm">
+                            <!-- JS Generated Rows -->
+                        </tbody>
+                    </table>
+                    <div id="empty-state" class="hidden p-12 text-center text-gray-400">
+                        <i class="fa-regular fa-folder-open text-4xl mb-3"></i>
+                        <p>No se encontraron visitas con este filtro.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 3: DETALLE EVALUACIÓN (CHECKLIST) ================= -->
+            <div id="view-detalle" class="hidden-view fade-in">
+                
+                <!-- Selector de Visita (Tabs) -->
+                <div class="flex overflow-x-auto gap-2 mb-6 pb-2 no-scrollbar" id="visit-tabs-container">
+                    <!-- JS Generated Tabs -->
+                </div>
+
+                <!-- Encabezado Dinámico de la Visita -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full -mr-8 -mt-8 z-0"></div>
+                    
+                    <div class="relative z-10 flex flex-col md:flex-row justify-between items-start gap-6">
+                        <div>
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded uppercase" id="detail-id">Visita #1</span>
+                                <span class="text-gray-500 text-sm" id="detail-date">05 Nov 2025</span>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800" id="detail-scenario">Desayuno Familiar</h2>
+                            <p class="text-gray-600 mt-2 italic max-w-2xl" id="detail-narrative">
+                                "Excelente ejecución..."
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-5xl font-black text-gray-800" id="detail-score">95%</div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Calificación Final</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Checklist Table 40 Puntos -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-700">Checklist Operativo (40 Puntos)</h3>
+                        <div class="text-xs text-gray-500">
+                            <span class="mr-3"><i class="fa-solid fa-circle-check text-green-500"></i> Cumple</span>
+                            <span><i class="fa-solid fa-circle-xmark text-red-500"></i> Falla</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="text-xs text-gray-400 uppercase bg-white border-b border-gray-100">
+                                <tr>
+                                    <th class="px-6 py-3 w-1/6">Categoría</th>
+                                    <th class="px-6 py-3 w-2/6">Punto a Evaluar</th>
+                                    <th class="px-6 py-3 w-1/12 text-center">Estado</th>
+                                    <th class="px-6 py-3 w-3/6">Observación del Shopper</th>
+                                </tr>
+                            </thead>
+                            <tbody id="checklist-body" class="divide-y divide-gray-50">
+                                <!-- JS Generated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ================= LOGIC & DATA ================= -->
+    <script>
+        // 1. CONFIGURACIÓN EDITABLE (Haz los cambios aquí)
+        const CONFIG_TIENDA = {
+            nombre: "Los Conejos",
+            sucursal: "Plaza Acaya",
+            logoUrl: "http://imgfz.com/i/f0P4H5Z.png", // URL del logo
+            moneda: "$"
+        };
+
+        // 2. MOCK DATA CENTRALIZADO (La Historia: Comida Rica, Mal Servicio)
+        const CONST_DATA = {
+            trend: {
+                labels: ['Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov'],
+                food: [92, 94, 95, 96, 95, 96], // Comida alta constante
+                service: [85, 80, 75, 65, 50, 45] // Servicio cayendo drásticamente
+            },
+            radar: {
+                labels: ['Sabor', 'Presentación', 'Limpieza', 'Rapidez', 'Protocolo', 'Venta Sugestiva'],
+                scores: [98, 95, 90, 60, 45, 25] // El 25 en Venta es el problema clave
+            },
+            // Las 4 visitas con sus datos específicos para la tabla y el detalle
+            visits: [
+                {
+                    id: "V-01", date: "05 Nov", time: "09:30 AM", shopper: "Ana G.",
+                    scenario: "Desayuno Familiar",
+                    score: 95,
+                    status: "high", // high, medium, low
+                    narrative: "Experiencia casi perfecta. El mesero conocía el menú y fue muy amable. La comida llegó caliente y rápido.",
+                    highlight: "Excelente Sabor",
+                    highlightColor: "text-green-600",
+                    fails: [] // Sin fallas graves
+                },
+                {
+                    id: "V-02", date: "12 Nov", time: "02:45 PM", shopper: "Carlos R.",
+                    scenario: "Comida de Negocios",
+                    score: 78,
+                    status: "medium",
+                    narrative: "La comida estuvo bien, pero tardaron 25 minutos en servir. Nadie ofreció bebidas adicionales ni postre.",
+                    highlight: "Lentitud Cocina",
+                    highlightColor: "text-yellow-600",
+                    fails: [22, 23, 24, 25] // IDs de fallas en checklist
+                },
+                {
+                    id: "V-03", date: "21 Nov", time: "08:00 PM", shopper: "Lucía M.",
+                    scenario: "Cena Pareja",
+                    score: 88,
+                    status: "medium",
+                    narrative: "Todo muy rico, pero los baños no tenían papel. Detalle importante que arruinó un poco la visita.",
+                    highlight: "Falla Insumos Baño",
+                    highlightColor: "text-yellow-600",
+                    fails: [34, 30]
+                },
+                {
+                    id: "V-04", date: "30 Nov", time: "11:15 AM", shopper: "Roberto F.",
+                    scenario: "Brunch Domingo",
+                    score: 65,
+                    status: "low",
+                    narrative: "Crítico: Esperé 6 minutos en la entrada sin que nadie me saludara. Nunca ofrecieron postre ni café. Pésimo servicio.",
+                    highlight: "Recepción Ignorada & Sin Venta",
+                    highlightColor: "text-red-600",
+                    fails: [6, 7, 10, 24, 25, 39, 40]
+                }
+            ],
+            // El Checklist Maestro de 40 puntos
+            checklistMaster: [
+                { id: 1, cat: "Instalaciones", item: "Fachada limpia y estado general" },
+                { id: 2, cat: "Instalaciones", item: "Estacionamiento ordenado" },
+                { id: 3, cat: "Instalaciones", item: "Iluminación adecuada" },
+                { id: 4, cat: "Instalaciones", item: "Menús limpios y sin daños" },
+                { id: 5, cat: "Instalaciones", item: "Mobiliario estable y limpio" },
+                { id: 6, cat: "Protocolo", item: "Bienvenida cordial < 10 seg (Hostess)" },
+                { id: 7, cat: "Protocolo", item: "Asignación de mesa inmediata" },
+                { id: 8, cat: "Protocolo", item: "Entrega de cartas abierta" },
+                { id: 9, cat: "Protocolo", item: "Mesero se presenta por nombre" },
+                { id: 10, cat: "Protocolo", item: "Ofrecimiento primera bebida" },
+                { id: 11, cat: "Alimentos", item: "Temperatura adecuada (Caldos calientes)" },
+                { id: 12, cat: "Alimentos", item: "Sabor balanceado (Sal/Sazón)" },
+                { id: 13, cat: "Alimentos", item: "Textura correcta (Crujiente/Suave)" },
+                { id: 14, cat: "Alimentos", item: "Frescura de ingredientes" },
+                { id: 15, cat: "Alimentos", item: "Tortillas calientes" },
+                { id: 16, cat: "Alimentos", item: "Salsas frescas y llenas" },
+                { id: 17, cat: "Alimentos", item: "Porciones según menú" },
+                { id: 18, cat: "Alimentos", item: "Bebidas con hielo y limpias" },
+                { id: 19, cat: "Alimentos", item: "Montaje estético del plato" },
+                { id: 20, cat: "Alimentos", item: "Vajilla sin despostilladuras" },
+                { id: 21, cat: "Servicio", item: "Toma de comanda precisa" },
+                { id: 22, cat: "Servicio", item: "Tiempo de espera < 15 min" },
+                { id: 23, cat: "Servicio", item: "Retiro de muertos (pre-bus)" },
+                { id: 24, cat: "Servicio", item: "OFRECIMIENTO DE POSTRE / CAFÉ" }, // CLAVE
+                { id: 25, cat: "Servicio", item: "VENTA SUGESTIVA (Upselling)" }, // CLAVE
+                { id: 26, cat: "Servicio", item: "Verificación de satisfacción (2 min)" },
+                { id: 27, cat: "Servicio", item: "Uniforme completo" },
+                { id: 28, cat: "Servicio", item: "Apariencia personal (Pelo/Uñas)" },
+                { id: 29, cat: "Higiene", item: "Piso limpio bajo la mesa" },
+                { id: 30, cat: "Higiene", item: "Servilletas suficientes" },
+                { id: 31, cat: "Higiene", item: "Ambiente (Música/Temperatura)" },
+                { id: 32, cat: "Baños", item: "Piso seco" },
+                { id: 33, cat: "Baños", item: "Jabón y toallas disponibles" },
+                { id: 34, cat: "Baños", item: "Papel higiénico disponible" },
+                { id: 35, cat: "Baños", item: "Espejos limpios" },
+                { id: 36, cat: "Baños", item: "Basureros no saturados" },
+                { id: 37, cat: "Caja", item: "Entrega de cuenta rápida < 3 min" },
+                { id: 38, cat: "Caja", item: "Ticket correcto y legible" },
+                { id: 39, cat: "Caja", item: "Despedida amable" },
+                { id: 40, cat: "Caja", item: "Invitación a regresar" }
+            ]
+        };
+
+        // 3. APLICACIÓN (Lógica JS)
+        const app = {
+            currentView: 'dashboard',
+            
+            init: function() {
+                this.renderConfig();
+                this.renderCharts();
+                this.renderAuditTable('all');
+                this.renderVisitTabs();
+                this.renderChecklist(0); // Renderiza visita 1 por defecto en detalle
+                this.updateDate();
+            },
+
+            renderConfig: function() {
+                document.getElementById('app-logo').src = CONFIG_TIENDA.logoUrl;
+                document.getElementById('store-name').textContent = `${CONFIG_TIENDA.nombre} - ${CONFIG_TIENDA.sucursal}`;
+                document.title = `Dashboard - ${CONFIG_TIENDA.nombre}`;
+            },
+
+            updateDate: function() {
+                const now = new Date();
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+                document.getElementById('current-date').textContent = now.toLocaleDateString('es-ES', options);
+            },
+
+            navigate: function(viewId) {
+                // 1. UI Updates
+                document.querySelectorAll('div[id^="view-"]').forEach(el => el.classList.add('hidden-view'));
+                document.getElementById(`view-${viewId}`).classList.remove('hidden-view');
+                
+                // 2. Nav State
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active', 'bg-brand-orange', 'text-white', 'shadow-lg'));
+                const activeNav = document.getElementById(`nav-${viewId}`);
+                if(activeNav) activeNav.classList.add('active'); // CSS handles styling via class
+                
+                // 3. Sidebar mobile logic
+                if(window.innerWidth < 768) {
+                    document.getElementById('sidebar').classList.add('hidden');
+                }
+
+                // 4. Header Title Update
+                const titles = {
+                    'dashboard': 'Visión General del Negocio',
+                    'auditorias': 'Bitácora de Auditorías',
+                    'detalle': 'Detalle Profundo de Evaluación'
+                };
+                document.getElementById('header-title').textContent = titles[viewId];
+            },
+
+            toggleSidebar: function() {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('hidden');
+                sidebar.classList.toggle('fixed');
+                sidebar.classList.toggle('h-full');
+                sidebar.classList.toggle('w-64');
+            },
+
+            // --- DASHBOARD LOGIC ---
+            renderCharts: function() {
+                // Chart Defaults
+                Chart.defaults.font.family = 'Inter';
+                Chart.defaults.color = '#64748B';
+
+                // 1. Trend Chart
+                new Chart(document.getElementById('trendChart'), {
+                    type: 'line',
+                    data: {
+                        labels: CONST_DATA.trend.labels,
+                        datasets: [
+                            {
+                                label: 'Calidad Comida',
+                                data: CONST_DATA.trend.food,
+                                borderColor: '#16A34A', // Green
+                                backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                pointRadius: 4
+                            },
+                            {
+                                label: 'Calidad Servicio',
+                                data: CONST_DATA.trend.service,
+                                borderColor: '#EF4444', // Red
+                                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                                borderDash: [5, 5],
+                                tension: 0.4,
+                                fill: false,
+                                pointRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { 
+                            y: { min: 0, max: 100, grid: { borderDash: [2, 4] } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+
+                // 2. Radar Chart
+                new Chart(document.getElementById('radarChart'), {
+                    type: 'radar',
+                    data: {
+                        labels: CONST_DATA.radar.labels,
+                        datasets: [{
+                            label: 'Desempeño Actual',
+                            data: CONST_DATA.radar.scores,
+                            backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                            borderColor: '#F97316',
+                            pointBackgroundColor: '#F97316',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#F97316'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                angleLines: { color: '#E2E8F0' },
+                                grid: { color: '#E2E8F0' },
+                                suggestedMin: 0,
+                                suggestedMax: 100,
+                                ticks: { display: false }
+                            }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            },
+
+            // --- AUDIT TABLE LOGIC ---
+            renderAuditTable: function(filter) {
+                const tbody = document.getElementById('audit-table-body');
+                tbody.innerHTML = '';
+                
+                let data = CONST_DATA.visits;
+                if(filter === 'high') data = data.filter(v => v.score >= 90);
+                if(filter === 'low') data = data.filter(v => v.score < 80);
+
+                if(data.length === 0) {
+                    document.getElementById('empty-state').classList.remove('hidden');
+                } else {
+                    document.getElementById('empty-state').classList.add('hidden');
+                    data.forEach(visit => {
+                        let statusBadge = '';
+                        if(visit.score >= 90) statusBadge = '<span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Excelente</span>';
+                        else if(visit.score >= 80) statusBadge = '<span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">Regular</span>';
+                        else statusBadge = '<span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">Crítico</span>';
+
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-gray-50 table-row-hover transition';
+                        tr.innerHTML = `
+                            <td class="px-6 py-4">
+                                <span class="font-mono text-xs text-gray-400 block">${visit.id}</span>
+                                <span class="font-medium text-gray-800">${visit.date}</span>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600">${visit.shopper}</td>
+                            <td class="px-6 py-4 font-medium ${visit.highlightColor}">${visit.highlight}</td>
+                            <td class="px-6 py-4 text-center font-bold text-gray-800">${visit.score}%</td>
+                            <td class="px-6 py-4 text-center">${statusBadge}</td>
+                            <td class="px-6 py-4 text-right">
+                                <button onclick="app.loadDetailFromTable('${visit.id}')" class="text-brand-orange hover:text-orange-700 font-medium text-xs border border-orange-200 px-3 py-1 rounded hover:bg-orange-50 transition">
+                                    Ver Detalle
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            },
+
+            filterAudits: function(type) {
+                // UI Toggle
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    if(btn.dataset.filter === type) {
+                        btn.classList.add('bg-gray-800', 'text-white');
+                        btn.classList.remove('text-gray-600', 'hover:bg-gray-100');
+                    } else {
+                        btn.classList.remove('bg-gray-800', 'text-white');
+                        btn.classList.add('text-gray-600', 'hover:bg-gray-100');
+                    }
+                });
+                this.renderAuditTable(type);
+            },
+
+            loadDetailFromTable: function(visitId) {
+                // Find index
+                const index = CONST_DATA.visits.findIndex(v => v.id === visitId);
+                this.navigate('detalle');
+                this.renderChecklist(index);
+            },
+
+            // --- CHECKLIST LOGIC ---
+            renderVisitTabs: function() {
+                const container = document.getElementById('visit-tabs-container');
+                CONST_DATA.visits.forEach((visit, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = `visit-tab-btn flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition border ${index === 0 ? 'bg-brand-orange text-white border-brand-orange' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`;
+                    btn.innerText = `${visit.id} (${visit.score}%)`;
+                    btn.onclick = () => app.renderChecklist(index);
+                    btn.dataset.index = index;
+                    container.appendChild(btn);
+                });
+            },
+
+            renderChecklist: function(visitIndex) {
+                const visit = CONST_DATA.visits[visitIndex];
+                
+                // 1. Update Header Info
+                document.getElementById('detail-id').innerText = `Visita ${visit.id}`;
+                document.getElementById('detail-date').innerText = `${visit.date} • ${visit.time}`;
+                document.getElementById('detail-scenario').innerText = visit.scenario;
+                document.getElementById('detail-narrative').innerText = `"${visit.narrative}"`;
+                
+                const scoreEl = document.getElementById('detail-score');
+                scoreEl.innerText = `${visit.score}%`;
+                scoreEl.className = `text-5xl font-black ${visit.score >= 90 ? 'text-green-600' : (visit.score < 80 ? 'text-red-600' : 'text-yellow-500')}`;
+
+                // 2. Update Tabs Styles
+                document.querySelectorAll('.visit-tab-btn').forEach(btn => {
+                    if(parseInt(btn.dataset.index) === visitIndex) {
+                        btn.className = 'visit-tab-btn flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition border bg-brand-orange text-white border-brand-orange shadow-md';
+                    } else {
+                        btn.className = 'visit-tab-btn flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition border bg-white text-gray-500 border-gray-200 hover:bg-gray-50';
+                    }
+                });
+
+                // 3. Render Table Rows
+                const tbody = document.getElementById('checklist-body');
+                tbody.innerHTML = '';
+
+                CONST_DATA.checklistMaster.forEach(item => {
+                    const isFail = visit.fails.includes(item.id);
+                    const tr = document.createElement('tr');
+                    tr.className = `border-b border-gray-50 hover:bg-gray-50 transition ${isFail ? 'bg-red-50/50' : ''}`;
+                    
+                    let obs = "Cumple con el estándar.";
+                    if (isFail) {
+                        // Custom messages per fail type based on narrative
+                        if(item.id === 24 || item.id === 25) obs = "No se realizó ofrecimiento. Pérdida de venta.";
+                        else if(item.id === 22) obs = "Tiempo excedido (>25 min).";
+                        else if(item.id === 6) obs = "Cliente ignorado en entrada.";
+                        else obs = "Incumplimiento de proceso.";
+                    }
+
+                    tr.innerHTML = `
+                        <td class="px-6 py-3 font-medium text-gray-500 text-xs uppercase">${item.cat}</td>
+                        <td class="px-6 py-3 text-gray-700 font-medium">${item.item}</td>
+                        <td class="px-6 py-3 text-center">
+                            ${isFail 
+                                ? '<i class="fa-solid fa-circle-xmark text-red-500 text-lg"></i>' 
+                                : '<i class="fa-solid fa-circle-check text-green-500 text-lg"></i>'}
+                        </td>
+                        <td class="px-6 py-3 text-gray-500 italic text-xs">${obs}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+    </script>
+</body>
+</html>
